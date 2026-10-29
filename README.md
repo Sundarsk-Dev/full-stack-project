@@ -1,8 +1,60 @@
 # TermsLens
 
-React/Vite/TypeScript, FastAPI and MySQL: private accounts, queued paste/URL analysis, guarded discovery, immutable captures/reports and eight rule groups. Groq has consent/provenance and a tested adapter; it stays disabled until readiness is verified.
+React/Vite/TypeScript, FastAPI and MySQL. **User reports the request and output work; the report UI is difficult to understand and needs improvement.** Both databases are migrated. Detailed runtime/provider acceptance and evaluation remain open in the [checklist](verification-checklist.md).
 
-**Baseline implemented; final acceptance pending.** Start with [Windows run instructions](RUNNING.md). Migrations, runtime/provider acceptance and evaluation remain open. See the [checklist](verification-checklist.md), [debugging guide](architecture-debugging.md), frozen [plan](plan-proposal.md), [workflow](implementation-workflow.md) and [handoff](transfercontext.md).
+## Start here: existing Windows workspace
+
+No reinstall or database reset is needed for the working workspace. In **each** PowerShell terminal, go to the project root:
+
+```powershell
+Set-Location -LiteralPath 'D:\programming\snu chennai\sem 1\full stack programming\mini project'
+```
+
+**Terminal 1 — API and built UI:**
+
+```powershell
+$env:TERMSLENS_GROQ_ENABLED = 'true'
+.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
+```
+
+**Terminal 2 — one worker:**
+
+```powershell
+$env:TERMSLENS_GROQ_ENABLED = 'true'
+Push-Location apps/api
+../../.venv/Scripts/python.exe -m app.worker
+```
+
+Leave both terminals open. `Worker started. Waiting for jobs…` means it is running. Open **http://127.0.0.1:8000**. Ctrl+C stops each process; do not stop MySQL or delete saved data. Groq needs a current readiness record as well as the enable flag; [AI setup/recovery](DEMO.md) explains it. For a local-only run, set the flag to `false` in both terminals and choose Rules-only.
+
+## Submit and read the output
+
+1. Register or log in. Choose the correct policy type, give the report a recognizable title, and select Paste text.
+2. In a third terminal at the project root, copy the sample below, then paste into the app. Choose **Hybrid** and consent for AI, or **Rules-only** for local analysis.
+3. Click **Analyze policy** once. Leave the worker open while Analysis progress advances. Read the saved report when it completes.
+4. Use history to reopen it. Reopening, filtering, changing score profiles and viewing the saved baseline do not request another AI review.
+
+```powershell
+Get-Content -LiteralPath './eval/fixtures/wordpress-terms-demo.md' -Raw -Encoding UTF8 | Set-Clipboard
+```
+
+The attributed WordPress refunds excerpt fits one AI batch. It is not the full contract or an accuracy benchmark. A short excerpt can reasonably leave many categories unknown.
+
+| Output | How to interpret it |
+|---|---|
+| Requested / Saved result | Requested is your choice; Saved result is what actually ran. Hybrid requested with Rules-only saved means fallback. |
+| Score range / 100 | **Higher is more favorable.** The range reflects unresolved evidence; it is not a confidence percentage or legal verdict. |
+| Grade or no grade | A letter needs at least 80% clause coverage, consistent scope and both score bounds in the same grade band. No grade means insufficient evidence. |
+| Clause coverage | Percentage of substantive clauses with an accepted finding, not measured accuracy. |
+| Severity / 5 | **Higher is more concerning:** favorable 0, neutral 1, concerning 2–3, invasive 4–5. This runs opposite to the overall score. |
+| Unknown / Unrated | No supported interpretation; it does not mean safe. Read the clause and its explanation. |
+| Finding source / Model | Distinguishes rule matches, reviewed exact matches and AI findings; AI findings show recorded model provenance. Zero accepted AI findings alone does not prove a provider failure. |
+
+Start with **Rating → invasive**, then **concerning**. Use **Highlight exact evidence for clause…** to jump to the quote in **Saved source text** and read its context. To see unrated clauses, reset Category, Rating and Finding source to **All**, then enable **Include unrated clauses**. Use Previous/Next clauses for longer reports.
+
+**Show rules-only baseline** compares the saved local interpretation with the saved result. **Scoring profile → Privacy-first** changes category weights using the same evidence. **Versions and reanalysis** preserves older captures/reports; reanalysis can request AI again. **Compare saved reports** needs the same policy type and compatible review settings and makes no AI calls. Deletion requires confirmation and a running worker for cleanup; wait for its receipt.
+
+The user-reported output readability issue is open: prioritize a clearer summary, concern/evidence hierarchy and simpler controls in the next UI task. Current documentation explains existing controls; a redesign has not been completed.
 
 ## Current scope
 
@@ -10,105 +62,30 @@ React/Vite/TypeScript, FastAPI and MySQL: private accounts, queued paste/URL ana
 - Paste one English policy or enter a direct public URL; owned idempotent jobs, stage polling, expiring leases, three attempts and atomic publication. Changing input/type resets Groq consent.
 - Initial rules for sharing/selling, retention/deletion, tracking/consent, content licensing/AI training, renewal/refunds, changes to terms, arbitration and termination/export. Unfamiliar, conflicting or qualified wording abstains; unsupported evidence remains unknown.
 - Score bounds/coverage, Unicode evidence and private history. Balanced/privacy-first views use saved evidence and the same scoring module as publication; the selector also applies to the rules baseline. Rules/fixtures remain engineering examples.
-- [URL workflow](url-fetching.md): choose Public URL; for a homepage, Find policy links, select one, confirm its type, then Analyze policy. Discovery never submits a job. Blocked/dynamic pages offer paste fallback. Private `var/snapshots` captures survive worker restart without refetching; reports show saved URL/time/hash metadata.
+- [URL workflow](url-fetching.md): choose Public URL, or Find policy links and select one; confirm type, then Analyze policy. Discovery does not submit a job. Blocked/dynamic pages offer paste fallback. Captures preserve source/time/hash metadata.
 - Request/job correlation, fixed diagnostic errors and read-only environment/job inspection support debugging without logging private input.
-- [Versions and reanalysis](versions.md): open a report to refresh its URL/replace text, browse earlier captures/revisions or reanalyze saved text. Unchanged refreshes reuse compatible reports; A -> B -> A retains all versions. Reanalysis creates a new report revision.
-- [Comparisons and deletion](comparisons-deletion.md): compare compatible versions/policies with separate text/finding changes. Confirm deletion to hide a document; the running worker removes its reports, dependent comparisons and snapshots, retrying interrupted cleanup. Status remains available after restart.
-- Rules-only sends no text externally. The coordinator joins consent, durable quotas, response recovery/validation and code scoring; publication verifies each AI finding against its owned saved response. Reports show requested/effective mode, degradation, source/model and a stored rules baseline.
-- The API accepts `mode: "hybrid"` only with boolean `consent: true` and `provider: "groq"`; it timestamps consent. The worker checks expiring local readiness before using the bounded Groq adapter. Disabled/unverified configuration produces explicit rules-only fallback. `/api/health` exposes availability/reason and disables hybrid in the UI when unavailable. Fake HTTP responses exercise persistence; they do not prove live readiness.
+- [Versions/reanalysis](versions.md) preserve immutable captures and report revisions, including A -> B -> A; compatible unchanged reports can be reused.
+- [Comparisons/deletion](comparisons-deletion.md) separate text/finding changes and support recoverable worker cleanup of confirmed deletions.
+- Rules-only sends nothing externally. Hybrid requires timestamped Groq consent, readiness, durable quotas and validated provenance. Reports preserve requested/effective mode, fallback reason and rules baseline. `/api/health` exposes availability; unavailable readiness disables Hybrid in the UI.
 
 ## Windows prerequisites and MySQL
 
-Use Python 3.11, Node 22.12+ and MySQL 8. The application accepts only `mysql+pymysql` URLs targeting `termslens_db`; test commands accept only `termslens_test`. SQLite appears solely in supplementary tests.
+Use Python 3.11, Node 22.12+ and MySQL 8. [Fresh-clone instructions](RUNNING.md#fresh-clone-only) cover schemas/scoped accounts, hidden password entry, dependencies, migrations and frontend build. This workspace already passed both login/migration checks at `20261029_lifecycle`; skip setup during normal startup. Tests use only `termslens_test`; the app uses `termslens_db`.
 
-Run in a normal local PowerShell terminal, from the project root:
-
-```powershell
-Get-Service -Name '*mysql*'
-mysql --version
-Test-NetConnection -ComputerName 127.0.0.1 -Port 3306
-```
-
-MySQL80 is running and port 3306 is reachable. After saving/replacing both URLs, the user's two application login checks returned `NOT READY`; the cause is unverified. At the user's request, database troubleshooting/migrations are deferred to the final runtime verification pass.
-
-Using your existing MySQL administrator login, run this at the `mysql>` prompt (or in Workbench) to create and inspect the two isolated schemas:
-
-```sql
-CREATE DATABASE IF NOT EXISTS termslens_db CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
-CREATE DATABASE IF NOT EXISTS termslens_test CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
-SELECT VERSION() AS mysql_version;
-SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME
-FROM INFORMATION_SCHEMA.SCHEMATA
-WHERE SCHEMA_NAME IN ('termslens_db', 'termslens_test');
-```
-
-Expect MySQL 8+ and both schemas using `utf8mb4`. Existing schemas are preserved; inspect differing settings before changing them. These results contain no passwords. Schema creation alone does not establish the application's login or migration readiness.
-
-Both local accounts and scoped grants are now created. For a fresh setup with unused account names and `partial_revokes=OFF`, [mysql_accounts.sql](scripts/mysql_accounts.sql) creates them with generated passwords. Escaped underscores make schema names literal. Keep password output private; do not rerun account creation for existing accounts.
-
-```powershell
-if (!(Test-Path -LiteralPath '.env')) { Copy-Item -LiteralPath '.env.example' -Destination '.env' }
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r apps/api/requirements-dev.txt
-.venv/Scripts/python.exe scripts/configure_database.py
-```
-
-The helper hides password input and encodes passwords inside the two URLs in private `.env`; no separate password variable or MySQL administrator password is needed. It appends missing settings and preserves existing values, including your Groq key. `.env.example` leaves URLs blank so copied settings still trigger prompts. No network calls or secret output.
-
-If passwords were shared, rotate both using your MySQL administrator session; keep the generated output private:
-
-```sql
-ALTER USER 'termslens'@'127.0.0.1' IDENTIFIED BY RANDOM PASSWORD;
-ALTER USER 'termslens_test'@'127.0.0.1' IDENTIFIED BY RANDOM PASSWORD;
-```
-
-Then enter the new passwords locally:
-
-```powershell
-.venv/Scripts/python.exe scripts/configure_database.py --replace-passwords
-```
-
-This flag appends password overrides for the documented local accounts; dotenv uses the last definition. Other URL fields and existing `.env` bytes are preserved. Process environment values override `.env`; clear stale URL variables locally if set. Variables:
-
-| Variable | Purpose |
-|---|---|
-| TERMSLENS_DATABASE_URL | MySQL application login and `termslens_db`, with `charset=utf8mb4`. |
-| TERMSLENS_TEST_DATABASE_URL | Separate test URL for `termslens_test`. |
-| TERMSLENS_ALLOWED_ORIGINS | Comma-separated exact UI/API origins; defaults cover local ports 5173/8000. |
-| TERMSLENS_SECURE_COOKIES | `false` for local HTTP; `true` when serving through HTTPS. |
-| GROQ_API_KEY | Private key in local `.env` or process environment; never in examples, commands or reports. |
-| TERMSLENS_GROQ_MODEL | Exact model ID verified for the account; no default or automatic substitute. |
-| TERMSLENS_GROQ_ENABLED | Defaults to `false`; keep disabled until readiness and scoped live-call authorization are established. |
-| TERMSLENS_GROQ_READINESS_FILE | Private readiness JSON; default `var/groq-readiness.json`, relative to the project root. |
-
-Prove both logins, then stop API/worker before applying migrations to each schema:
-
-```powershell
-Push-Location apps/api
-../../.venv/Scripts/python.exe -m app.manage
-../../.venv/Scripts/python.exe -m app.manage --test
-Pop-Location
-.venv/Scripts/python.exe -m alembic -c apps/api/alembic.ini upgrade head
-.venv/Scripts/python.exe -m alembic -c apps/api/alembic.ini -x test=true upgrade head
-Push-Location apps/api
-../../.venv/Scripts/python.exe -m app.manage --migrations
-../../.venv/Scripts/python.exe -m app.manage --test --migrations
-Pop-Location
-```
-
-These checks print no credentials. Do not point tests at an unrelated database. Migrations do not run automatically on API startup.
+Keep the database URLs and Groq key in private `.env`; the password helper preserves existing settings. Process environment overrides `.env`. The source [`.env.example`](.env.example) contains placeholders only. Never paste credentials into Git commands or reports.
 
 ## Groq readiness and authorization
 
-This session authorizes a bounded Groq test. User-selected `openai/gpt-oss-20b` is saved; the key is preserved. Test-enable preflight returns `readiness_missing_or_invalid`; verified free access/quotas remain required. Groq is disabled. Process environment overrides `.env`. The existing `httpx==0.27.0` adapter uses Chat Completions; the supplied Responses API example is not a live test result.
+Live testing is authorized; account/quiet-usage confirmation and limits were recorded privately. The user now reports a working request/output after the AI setup instructions, but saved mode/model/usage have not been inspected. Do not repeat setup for a working configuration. [Demo setup](DEMO.md) covers missing readiness; the existing httpx adapter uses Chat Completions.
 
-The [readiness example](groq-readiness.example.json) is deliberately invalid. When verified evidence is available, prepare a private copy without replacing an existing record:
+For an unconfigured demo only, stop API/worker and run the setup below. It requires current saved account evidence. The optional official tokenizer is a setup tool, not an application dependency:
 
 ```powershell
-if (!(Test-Path -LiteralPath 'var/groq-readiness.json')) { Copy-Item -LiteralPath 'groq-readiness.example.json' -Destination 'var/groq-readiness.json' }
+.venv/Scripts/python.exe -m pip install openai-harmony
+.venv/Scripts/python.exe scripts/configure_groq_demo.py
 ```
 
-Fill this UTF-8 JSON from actual account/model evidence; do not invent limits or set attestations merely to enable the UI:
+Setup uses saved confirmation, checks official model framing/token estimates and authenticated model availability, then writes a private four-hour record and enables AI. It sends no inference, resets no ledger and preserves existing records. [Example](groq-readiness.example.json) remains invalid; manual records require actual evidence:
 
 | Field | Required evidence / validation |
 |---|---|
@@ -140,31 +117,26 @@ This lists candidates without connecting. WordPress is captured; its offline wor
 
 ## Build and run
 
-```powershell
-Push-Location apps/web
-npm.cmd ci --cache ../../var/npm-cache
-npm.cmd run build
-Pop-Location
-```
+Startup commands are at the top. After frontend edits, run `npm.cmd --prefix apps/web run build` and refresh port 8000. For live editing, use `npm.cmd --prefix apps/web run dev` in a third terminal and open http://127.0.0.1:5173; API/worker remain required. Health: `/api/health`; API docs: `/api/docs`. [Fresh setup](RUNNING.md#fresh-clone-only) includes dependency installation.
 
-Cached frontend dependencies build; fresh `npm ci` remains unverified. Python requirements and `pip check` passed in `.venv`. The handoff records affected checks; runtime acceptance remains separate.
+## Git: save and push updates
 
-Start the API in one terminal:
+This workspace already has branch `main` and remote `origin`; do not rerun `git init` or `git remote add`. From the root, run each step only if the previous one succeeds:
 
 ```powershell
-.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
+git status --short
+git check-ignore -v .env var/groq-readiness.json var/groq-demo-evidence.json
+git add .gitignore .gitattributes
+git add .
+git diff --cached --stat
+git diff --cached --check
+git commit -m "Document demo workflow and improve worker startup"
+git push -u origin main
 ```
 
-Start exactly one worker in a second terminal:
+Review the staged filenames before committing. `.gitignore` excludes private environments/evidence/captures, dependencies, builds, caches, test reports and local database/key files; source fixtures, lockfiles and examples remain included. Ignore rules do not remove files already tracked. Never force-add secrets or force-push over remote work. If the push is rejected, preserve local changes and resolve the reported remote-history/authentication issue before retrying.
 
-```powershell
-Push-Location apps/api
-../../.venv/Scripts/python.exe -m app.worker
-```
-
-Open http://127.0.0.1:8000 for the built UI. Readiness is `/api/health`; API documentation is `/api/docs`. The worker uses a MySQL advisory lock plus per-job leases; queued jobs persist across restarts.
-
-For frontend development, run `npm.cmd --prefix apps/web run dev` and open http://127.0.0.1:5173. Vite proxies `/api` to port 8000; the API and worker still need to run.
+Repository: https://github.com/Sundarsk-Dev/full-stack-project. A push shares code; it does not deploy the app. Current push status is unverified. [Fresh-clone setup](RUNNING.md#fresh-clone-only) is required on another machine; private `.env`, readiness evidence and local data are not transferred by Git.
 
 ## Verification
 

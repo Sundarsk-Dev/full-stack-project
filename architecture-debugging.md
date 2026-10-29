@@ -81,7 +81,7 @@ F5 events add `ai_dispatch_started` / `ai_dispatch_finished` with job/call UUIDs
 |---|---|---|
 | UI cannot load / request has no response | Built `dist`, API process, Vite proxy and host socket permissions | README start commands; browser Network tab; `/api/health`. |
 | Login or mutation returns 401/403 | Session expiry, exact origin and CSRF header | Keep one host name consistently; inspect status/header presence without copying cookie/token values. Run HTTP security tests. |
-| API 503 / worker unavailable | Interpreter, driver, DB URL presence, schema | `--diagnostics`, then `--migrations`; missing packages differ from failed login or unapplied schema. |
+| API 503 / worker unavailable | Interpreter, driver, DB URL, schema | Run `app.manage`: fixed login/connection/schema codes; see [code guide](RUNNING.md). `--diagnostics` is offline. |
 | Job stays queued | Worker process, database selection, advisory lock | Inspect job; start the single worker with the same application configuration. |
 | Job stays running / retries | Lease expiry/heartbeat, attempt count and failure stage | Inspect current lease metadata and worker events; expired work recovers within three attempts. Never reset attempts or edit lease tokens to force progress. |
 | Job done but report unavailable | Atomic publication, owner join, tombstone | Follow result/version IDs; test reopening as the owner and denial for a second user. |
@@ -94,7 +94,7 @@ F5 events add `ai_dispatch_started` / `ai_dispatch_finished` with job/call UUIDs
 
 ## Schema changes and recovery
 
-Head `20261029_lifecycle` adds comparisons and deletion receipts after the [version migration](versions.md). Offline DDL passes; real migrations remain pending. Stop API/worker and run from the root:
+Head `20261029_lifecycle` adds comparisons and deletion receipts after the [version migration](versions.md). Both real schemas passed revision checks in the user's terminal on 2026-10-30 (G1-05). For a fresh setup or future upgrade, stop API/worker and run from the root:
 
 ```powershell
 .venv/Scripts/python.exe -m alembic -c apps/api/alembic.ini upgrade head
@@ -105,9 +105,9 @@ Push-Location apps/api
 Pop-Location
 ```
 
-Require both revision checks before restarting. Add migrations for new columns, update `SCHEMA_REVISION`/models and verify upgrades; never edit applied migrations. Execution remains pending here.
+Require both revision checks before restarting; both passed for the current workspace. Add migrations for new columns, update `SCHEMA_REVISION`/models and verify upgrades; never edit applied migrations.
 
-One MySQL advisory lock and renewable leases guard the worker; three attempts, stale holders fenced. Publication locks owner before job/document, matching enqueue/deletion. Fetch/files stay outside DB transactions; atomic envelopes recover pre-attachment captures. Publication is atomic. MySQL crash/race acceptance remains pending.
+Worker logs startup after acquiring its MySQL lock; waiting between jobs is normal. Ctrl+C releases the lock/disposes the engine cleanly. Leases fence stale holders across three attempts. Publication locks owner before job/document; fetch/files stay outside transactions. Atomic captures/publication recover interruptions; MySQL crash/race acceptance remains pending.
 
 Discovery uses session/origin/CSRF, three requests/minute per user/IP and no jobs. It releases DB reads before fetching. UI timeout is 65 seconds; the server retains its 60-second bound after disconnect. `--test` isolates URL children and `var/tests/snapshots`. See [URL contracts](url-fetching.md).
 
@@ -139,6 +139,6 @@ HTTP 408/5xx/network/truncation outcomes are unknown; invalid/non-200 responses 
 
 Consent is a strict boolean for Groq, timestamped by the API and included in hybrid idempotency identity. Rules-only hashes retain the old field set. The UI clears consent on source/type/mode changes and reads availability from health. Report baseline switching is local; AI filters and source/model labels use saved provenance. Legacy null metadata is shown as unavailable, never recomputed with newer rules.
 
-[Source preparation](eval/README.md) checks captures/offsets/splits; rights/labels are pending. Groq test authorized, `openai/gpt-oss-20b` saved; readiness missing, zero live calls. Both logins returned `NOT READY`; diagnosis deferred. Retry blocked checks only after conditions change.
+[Source preparation](eval/README.md): rights/labels pending. User confirms registration and request/output work; output UI is hard to read. README explains output controls. Detailed provider/reopen/recovery acceptance remains pending. Agent socket restrictions are separate.
 
 Keep private content, credentials, URLs and raw exceptions out of logs/handoffs. Use fixed codes and synthetic fixtures. Follow AGENTS; verify frozen inputs and document caps with `python scripts/check_context.py`.

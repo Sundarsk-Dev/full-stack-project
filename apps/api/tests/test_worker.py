@@ -1,19 +1,21 @@
 """Synchronous worker/storage checks. SQLite is only an isolated test fixture."""
 from datetime import timedelta
+from contextlib import nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import MagicMock, Mock, patch
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import sessionmaker
 
 from app.analysis import analyze
-from app.config import ROOT
+from app.config import ROOT, Settings
 from app.db import utcnow
 from app.models import Analysis, Base, Document, DocumentVersion, Job, User
 from app.reports import report_data
-from app.worker import LeaseLost, capture, claim, process_claim, publish
+from app.worker import LeaseLost, capture, claim, main, process_claim, publish
 
 TEXT = "A \U0001f4dc heading.\nWe sell your personal data to advertisers.\nWe retain your personal data indefinitely.\nWe use advertising cookies without your consent."
 
@@ -106,6 +108,65 @@ class WorkerTests(WorkerFixture):
         with self.factory.begin() as db:
             db.add(Job(owner_id=self.bob, idempotency_key="bob-job", request_hash="b" * 64, input_text=TEXT, title="Other", document_type="privacy"))
         self.assertIsNone(claim(self.factory))
+
+
+class WorkerCLITests(unittest.TestCase):
+    def setUp(self):
+        self.engine = MagicMock()
+        self.lock = self.engine.connect.return_value.__enter__.return_value
+        self.lock.execute.return_value.scalar.return_value = 1
+        self.factory = Mock()
+        patches = {
+            "Settings.from_env": Mock(return_value=Settings()),
+            "make_database": Mock(return_value=(self.engine, self.factory)),
+            "SnapshotStore": Mock(), "process_deletion": Mock(),
+            "claim": Mock(return_value=None), "process_claim": Mock(),
+            "heartbeat": Mock(side_effect=lambda *args: nullcontext()),
+            "time.sleep": Mock(side_effect=KeyboardInterrupt),
+            "logging.basicConfig": Mock(), "configure_logging": Mock(),
+        }
+        for name, mock in patches.items():
+            self.enterContext(patch("app.worker." + name, mock))
+        self.mocks = patches
+        self.enterContext(patch("sys.argv", ["app.worker"]))
+
+    def assert_released(self):
+        self.assertIn("RELEASE_LOCK", str(self.lock.execute.call_args.args[0]))
+        self.engine.dispose.assert_called_once()
+
+    def test_idle_worker_announces_start_and_stops_cleanly_on_ctrl_c(self):
+        with self.assertLogs("termslens.worker", level="INFO") as logs:
+            main()
+        self.assertIn("Waiting for jobs", logs.output[0])
+        self.assertIn("Worker stopped", logs.output[-1])
+        self.mocks["process_claim"].assert_not_called()
+        self.assert_released()
+
+    def test_interrupt_during_job_does_not_retry_and_releases_worker_lock(self):
+        self.mocks["claim"].return_value = ("job-id", "lease-token")
+        self.mocks["process_claim"].side_effect = KeyboardInterrupt
+        with self.assertLogs("termslens.worker", level="INFO"):
+            main()
+        self.mocks["process_claim"].assert_called_once()
+        self.mocks["time.sleep"].assert_not_called()
+        self.assert_released()
+
+    def test_duplicate_worker_never_announces_start_or_claims_jobs(self):
+        self.lock.execute.return_value.scalar.return_value = 0
+        with self.assertLogs("termslens.worker", level="INFO") as logs, self.assertRaises(SystemExit) as error:
+            main()
+        self.assertEqual(error.exception.code, 1)
+        self.assertFalse(any("Worker started" in line for line in logs.output))
+        self.mocks["claim"].assert_not_called()
+        self.lock.execute.assert_called_once()
+        self.engine.dispose.assert_called_once()
+
+    def test_once_exits_without_sleep_and_releases_worker_lock(self):
+        with patch("sys.argv", ["app.worker", "--once"]), self.assertLogs("termslens.worker", level="INFO") as logs:
+            main()
+        self.assertIn("--once", logs.output[0])
+        self.mocks["time.sleep"].assert_not_called()
+        self.assert_released()
 
 
 if __name__ == "__main__": unittest.main()

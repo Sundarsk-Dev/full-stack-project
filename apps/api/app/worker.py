@@ -302,6 +302,7 @@ def main():
     settings = Settings.from_env(test=args.test)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     configure_logging()
+    engine = None
     try:
         engine, factory = make_database(settings.database_url, test=args.test)
         snapshots = SnapshotStore(ROOT / "var" / ("tests/snapshots" if settings.test_mode else "snapshots"))
@@ -312,6 +313,10 @@ def main():
                 raise ValueError("Another TermsLens worker is already active.")
             lock.commit()
             try:
+                if args.once:
+                    LOG.info("Worker started. Checking for one job (--once).")
+                else:
+                    LOG.info("Worker started. Waiting for jobs; keep this terminal open. Ctrl+C stops it.")
                 while True:
                     # Detect loss of the lock connection before claiming more work.
                     if lock.execute(sql_text("SELECT IS_USED_LOCK(:name) = CONNECTION_ID()"), lock_parameters).scalar() != 1:
@@ -328,9 +333,14 @@ def main():
             finally:
                 lock.execute(sql_text("SELECT RELEASE_LOCK(:name)"), lock_parameters)
                 lock.commit()
+    except KeyboardInterrupt:
+        LOG.info("Worker stopped.")
     except (SQLAlchemyError, ValueError, ImportError):
         LOG.error("Worker unavailable. Check MySQL, dependencies, migrations and that only one worker runs.")
         raise SystemExit(1)
+    finally:
+        if engine is not None:
+            engine.dispose()
 
 
 if __name__ == "__main__":

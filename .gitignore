@@ -1,14 +1,32 @@
+# Dependencies and compiled output.
 .venv/
+venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Private configuration and local captures/provider evidence.
 .env
 .env.*
 !.env.example
-node_modules/
-dist/
 var/
+
+# Tool caches and generated test/coverage reports.
+.cache/
 .pytest_cache/
-*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.vite/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+playwright-report/
+test-results/
+
 # Local host metadata, credentials and generated database/log files.
 .codex/
 .agents/
