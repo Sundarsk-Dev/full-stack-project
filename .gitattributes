@@ -1,0 +1,6 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+plan-proposal.md -text
+TermsLens_Project_Plan.md -text
+Assignment_10_Report.pdf -text

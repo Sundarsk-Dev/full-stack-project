@@ -1,0 +1,13 @@
+{
+  "revision": "gate1-rules-v1",
+  "status": "Initial engineering rules; human evaluation pending",
+  "rules": [
+    {"id":"sell-data","issue":"sale","category":1,"severity":5,"sentence":"we sell your personal data to advertisers","explanation":"This statement explicitly permits selling your personal data to advertisers."},
+    {"id":"no-sale","issue":"sale","category":1,"severity":0,"sentence":"we do not sell your personal data","explanation":"This statement explicitly rules out selling your personal data. It does not establish the policy's other sharing practices."},
+    {"id":"share-advertisers","issue":"sharing","category":1,"severity":3,"sentence":"we share your personal data with advertisers","explanation":"This statement permits sharing your personal data with advertisers."},
+    {"id":"retain-indefinitely","issue":"retention","category":2,"severity":4,"sentence":"we retain your personal data indefinitely","explanation":"This statement gives no time limit for retaining your personal data."},
+    {"id":"delete-30-days","issue":"retention","category":2,"severity":0,"sentence":"we delete your personal data within 30 days after account closure","explanation":"This statement sets a 30-day deletion period after account closure."},
+    {"id":"tracking-without-consent","issue":"tracking","category":3,"severity":4,"sentence":"we use advertising cookies without your consent","explanation":"This statement permits advertising cookies without your consent."},
+    {"id":"tracking-with-consent","issue":"tracking","category":3,"severity":0,"sentence":"we use advertising cookies only with your consent","explanation":"This statement makes your consent a condition for advertising cookies."}
+  ]
+}

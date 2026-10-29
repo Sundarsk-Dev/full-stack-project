@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "account_id": "REPLACE_WITH_SHA256_OF_STABLE_ACCOUNT_ID_NOT_API_KEY",
+  "model": "REPLACE_WITH_VERIFIED_MODEL",
+  "verified_at": "2000-01-01T00:00:00Z",
+  "valid_until": "2000-01-02T00:00:00Z",
+  "free_access_verified": false,
+  "exclusive_account_usage_verified": false,
+  "limits_complete_verified": false,
+  "estimator_verified": false,
+  "estimator_revision": "utf8-json-plus-256-v1",
+  "verification_reference": "REPLACE_WITH_LOCAL_EVIDENCE_REFERENCE_WITHOUT_SECRETS",
+  "limits": [
+    {"name": "model_requests_minute", "resource": "requests", "period_seconds": 60, "capacity": 0},
+    {"name": "model_requests_day", "resource": "requests", "period_seconds": 86400, "capacity": 0},
+    {"name": "model_tokens_minute", "resource": "total_tokens", "period_seconds": 60, "capacity": 0},
+    {"name": "model_tokens_day", "resource": "total_tokens", "period_seconds": 86400, "capacity": 0}
+  ]
+}

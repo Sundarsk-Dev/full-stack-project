@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+var/
+.pytest_cache/
+*.egg-info/
+# Local host metadata, credentials and generated database/log files.
+.codex/
+.agents/
+.aws/
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
+*.log
+.DS_Store
+Thumbs.db

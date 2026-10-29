@@ -1,0 +1,19 @@
+{
+  "revision": "gate2-rules-v1",
+  "status": "Initial engineering rules; human review and heldout evaluation pending",
+  "rules": [
+    {"id":"perpetual-license","issue":"license_duration","category":4,"severity":5,"sentence":"you grant us a perpetual license to your content","explanation":"This statement grants a content license without an expiry date."},
+    {"id":"license-ends-on-deletion","issue":"license_duration","category":4,"severity":0,"sentence":"the license to your content ends when you delete it","explanation":"This statement ends the content license when the content is deleted."},
+    {"id":"ai-training","issue":"ai_training","category":4,"severity":4,"sentence":"we use your content to train artificial intelligence models","explanation":"This statement permits using your content for AI model training."},
+    {"id":"automatic-renewal","issue":"renewal","category":5,"severity":2,"sentence":"your subscription renews automatically until you cancel","explanation":"Charges continue through automatic renewal until you cancel."},
+    {"id":"no-refunds","issue":"refunds","category":5,"severity":3,"sentence":"all payments are non-refundable","explanation":"This statement rules out refunds for payments."},
+    {"id":"cancel-anytime","issue":"cancellation","category":5,"severity":0,"sentence":"you can cancel your subscription at any time","explanation":"This statement allows cancellation at any time; it does not promise a refund."},
+    {"id":"change-without-notice","issue":"change_notice","category":6,"severity":4,"sentence":"we may change these terms without notice","explanation":"The terms may change without notifying you."},
+    {"id":"change-30-days-notice","issue":"change_notice","category":6,"severity":0,"sentence":"we will notify you 30 days before material changes to these terms","explanation":"This statement promises 30 days of notice before material changes."},
+    {"id":"mandatory-arbitration","issue":"arbitration","category":7,"severity":4,"sentence":"you must resolve disputes through binding arbitration","explanation":"This statement requires binding arbitration for disputes."},
+    {"id":"class-action-waiver","issue":"class_actions","category":7,"severity":4,"sentence":"you waive your right to participate in a class action","explanation":"This statement waives participation in class actions."},
+    {"id":"termination-without-notice","issue":"termination_notice","category":8,"severity":4,"sentence":"we may terminate your account without notice","explanation":"The account may be terminated without advance notice."},
+    {"id":"export-before-closure","issue":"export","category":8,"severity":0,"sentence":"you can export your data before closing your account","explanation":"This statement allows exporting your data before account closure."},
+    {"id":"no-export","issue":"export","category":8,"severity":3,"sentence":"we provide no way to export your data","explanation":"This statement provides no way to export your data."}
+  ]
+}

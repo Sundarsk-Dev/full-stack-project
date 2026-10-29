@@ -1,0 +1,20 @@
+{
+  "revision": "source-candidates-v1",
+  "status": "Unverified candidates; availability, reuse rights and human labels pending",
+  "targets": {"base_min": 100, "base_max": 120, "families": 8, "heldout_min": 40, "heldout_families_min": 3, "adversarial_pairs_min": 20},
+  "policy_families": [
+    {"id": "automattic", "name": "Automattic / WordPress.com", "split": "development", "target_clauses": 14, "documents": [{"id": "wordpress-terms", "url": "https://wordpress.com/tos/", "document_type": "terms"}]},
+    {"id": "discourse", "name": "Discourse", "split": "development", "target_clauses": 14, "documents": [{"id": "discourse-terms", "url": "https://www.discourse.org/terms", "document_type": "terms"}]},
+    {"id": "mozilla", "name": "Mozilla", "split": "development", "target_clauses": 14, "documents": [{"id": "mozilla-terms", "url": "https://www.mozilla.org/en-US/about/legal/terms/mozilla/", "document_type": "terms"}]},
+    {"id": "creative-commons", "name": "Creative Commons", "split": "development", "target_clauses": 14, "documents": [{"id": "cc-terms", "url": "https://creativecommons.org/policies/", "document_type": "terms"}]},
+    {"id": "eff", "name": "Electronic Frontier Foundation", "split": "development", "target_clauses": 14, "documents": [{"id": "eff-privacy", "url": "https://www.eff.org/policy", "document_type": "privacy"}]},
+    {"id": "wikimedia", "name": "Wikimedia Foundation", "split": "heldout", "target_clauses": 14, "documents": [{"id": "wikimedia-terms", "url": "https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use", "document_type": "terms"}]},
+    {"id": "openstreetmap", "name": "OpenStreetMap Foundation", "split": "heldout", "target_clauses": 14, "documents": [{"id": "osm-privacy", "url": "https://osmfoundation.org/wiki/Privacy_Policy", "document_type": "privacy"}]},
+    {"id": "blender", "name": "Blender Foundation", "split": "heldout", "target_clauses": 14, "documents": [{"id": "blender-privacy", "url": "https://www.blender.org/privacy-policy/", "document_type": "privacy"}]}
+  ],
+  "provider_documents": [
+    {"id": "groq-models", "url": "https://console.groq.com/docs/models"},
+    {"id": "groq-rate-limits", "url": "https://console.groq.com/docs/rate-limits"},
+    {"id": "groq-pricing", "url": "https://groq.com/pricing/"}
+  ]
+}
