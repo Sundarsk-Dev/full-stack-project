@@ -1,10 +1,12 @@
 """Verify this demo's saved evidence/model/tokenizer, then enable Groq. No inference."""
+import argparse
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+from tempfile import NamedTemporaryFile
 from time import monotonic
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,7 +82,7 @@ def verify_model(settings):
         raise SetupError("The saved model is unavailable for the saved key; no inference was sent.")
 
 
-def configure():
+def configure(*, renew=False):
     settings = replace(Settings.from_env(), groq_enabled=True)
     status = groq_readiness(settings)
     if status.policy:
@@ -100,8 +102,18 @@ def configure():
         path = ROOT / path
     if path.resolve() != (ROOT / "var/groq-readiness.json").resolve():
         raise SetupError("Use var/groq-readiness.json for this local demo setup.")
-    if path.exists():
-        raise SetupError("An existing readiness record needs review; setup will not replace or renew it.")
+    previous = path.read_bytes() if path.exists() else None
+    if previous is not None:
+        if not renew:
+            raise SetupError("Readiness has expired. Run scripts/configure_groq_demo.py --renew to reverify it without resetting usage.")
+        prior = ReadinessRecord.model_validate_json(previous)
+        account_id = sha256(evidence["account_reference"].encode("utf-8")).hexdigest()
+        if prior.account_id != account_id or prior.model != settings.groq_model:
+            raise SetupError("Account/model evidence changed; renewal will not replace this record.")
+        if (prior.verified_at.tzinfo is None or prior.valid_until.tzinfo is None
+                or not prior.verified_at < prior.valid_until <= now
+                or prior.valid_until > prior.verified_at + timedelta(hours=24)):
+            raise SetupError("Only a valid expired record can be renewed; inspect its dates privately.")
     env_path = ROOT / ".env"
     original = env_path.read_bytes()
     estimate = verify_estimator()
@@ -109,7 +121,7 @@ def configure():
     record = ReadinessRecord(schema_version=1,
         account_id=sha256(evidence["account_reference"].encode("utf-8")).hexdigest(),
         model=settings.groq_model, verified_at=now,
-        valid_until=min(now + timedelta(hours=4), confirmed + timedelta(hours=24)),
+        valid_until=confirmed + timedelta(hours=24),
         free_access_verified=True, exclusive_account_usage_verified=True, limits_complete_verified=True,
         estimator_verified=True, estimator_revision=ESTIMATOR_REVISION,
         verification_reference="var/groq-demo-evidence.json", limits=[
@@ -121,24 +133,45 @@ def configure():
                 ("model_tokens_day", "total_tokens", 86400, "tokens_per_day")]])
     if env_path.read_bytes() != original:
         raise SetupError(".env changed during verification; nothing was enabled. Run setup again.")
+    if (path.read_bytes() if path.exists() else None) != previous:
+        raise SetupError("Readiness changed during verification; nothing was replaced. Run setup again.")
     evidence.update(estimator_verified=True, estimator_check=estimate,
                     authenticated_model_lookup="passed", readiness_created_at=now.isoformat())
     EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
-    # Exclusive creation preserves an existing record; never renew/reset quotas silently.
-    with path.open("x", encoding="utf-8") as stream:
-        stream.write(record.model_dump_json(indent=2) + "\n")
+    if previous is None:
+        with path.open("x", encoding="utf-8") as stream:
+            stream.write(record.model_dump_json(indent=2) + "\n")
+    else:
+        # Keep the old evidence; atomically publish only after successful rechecks.
+        # Account identity, quota names and database ledger rows are never reset.
+        history = path.parent / "groq-readiness-history"
+        history.mkdir(exist_ok=True)
+        archive = history / (sha256(previous).hexdigest() + ".json")
+        if not archive.exists():
+            with archive.open("xb") as stream: stream.write(previous)
+        temporary = None
+        try:
+            with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(record.model_dump_json(indent=2) + "\n")
+            temporary.replace(path)
+        finally:
+            if temporary is not None and temporary.exists(): temporary.unlink()
     if groq_readiness(settings).policy is None:
         raise SetupError("Readiness validation failed; the enable setting was not changed.")
     with env_path.open("ab") as stream:
         stream.write((b"" if original.endswith(b"\n") else b"\n") + b"TERMSLENS_GROQ_ENABLED=true\n")
-    print("PASS: Groq configured for four hours or until account confirmation expires. No inference sent.")
+    print("PASS: Groq configured until " + record.valid_until.astimezone().isoformat(timespec="seconds") + ". No inference sent.")
     print("Restart API and one normal worker, refresh the browser, then submit the demo once with Hybrid consent.")
     print("Use this account only with TermsLens during the demo; its saved ledger must cover all usage.")
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--renew", action="store_true", help="Reverify an expired record within the saved account confirmation's 24-hour window; preserve identity and usage")
+    args = parser.parse_args(argv)
     try:
-        configure()
+        configure(renew=args.renew)
     except SetupError as error:
         print("NOT READY: " + str(error))
         raise SystemExit(1) from None

@@ -28,9 +28,11 @@ export default function App() {
   const [url, setUrl] = useState('');
   const [discovering, setDiscovering] = useState(false);
   const [documentType, setDocumentType] = useState<DocumentType>('privacy');
-  const [mode, setMode] = useState<ReviewMode>('rules_only');
+  const [modeChoice, setMode] = useState<ReviewMode | null>(null);
   const [consent, setConsent] = useState(false);
   const [hybridAvailable, setHybridAvailable] = useState(false);
+  const [hybridReason, setHybridReason] = useState<string>();
+  const mode: ReviewMode = hybridAvailable ? modeChoice || 'hybrid' : 'rules_only';
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function App() {
   function acceptAuth(value: Auth) {
     setAuth(value); setRegister(false); setPassword(''); setError(''); setHistory(null); setHistoryPage(0);
     setReport(null); setReportId(null); setJob(null); setJobId(readSavedJob(value.user.id));
-    setMode('rules_only'); setConsent(false); setHybridAvailable(false); submission.current = null;
+    setMode(null); setConsent(false); setHybridAvailable(false); setHybridReason(undefined); submission.current = null;
     setInputKind('paste'); setUrl(''); setDiscovering(false);
   }
 
@@ -65,11 +67,19 @@ export default function App() {
   useEffect(() => {
     if (!auth) return;
     const controller = new AbortController();
-    api<{ external_review?: { available: boolean } }>('/health', { signal: controller.signal })
-      .then(value => { if (!controller.signal.aborted) setHybridAvailable(value.external_review?.available === true); })
-      .catch(() => { if (!controller.signal.aborted) setHybridAvailable(false); });
+    api<{ external_review?: { available: boolean; reason?: string } }>('/health', { signal: controller.signal })
+      .then(value => { if (!controller.signal.aborted) { setHybridAvailable(value.external_review?.available === true); setHybridReason(value.external_review?.reason); } })
+      .catch(() => { if (!controller.signal.aborted) { setHybridAvailable(false); setHybridReason('api_unreachable'); } });
     return () => controller.abort();
   }, [auth?.user.id]);
+
+  useEffect(() => { setConsent(false); }, [hybridAvailable]);
+  useEffect(() => {
+    if (report) {
+      document.getElementById('report-title')?.focus({ preventScroll: true });
+      window.scrollTo({ top: 0 });
+    }
+  }, [report?.id]);
 
   useEffect(() => {
     if (!auth) return;
@@ -127,7 +137,7 @@ export default function App() {
     function clearSession() {
       if (auth) saveJob(auth.user.id, null);
       setAuth(null); setJobId(null); setJob(null); setReportId(null); setReport(null); setHistory(null); setText(''); setTitle(''); submission.current = null;
-      setMode('rules_only'); setConsent(false); setHybridAvailable(false);
+      setMode(null); setConsent(false); setHybridAvailable(false); setHybridReason(undefined);
       setInputKind('paste'); setUrl(''); setDiscovering(false);
     }
     try {
@@ -165,13 +175,17 @@ export default function App() {
     setReportId(null); setReport(null); setHistory(null); setHistoryPage(0); setHistoryRevision(n => n + 1); setDeletionRevision(n => n + 1);
     if (auth && job?.document_id === documentId) { saveJob(auth.user.id, null); setJobId(null); setJob(null); }
   }
+  const historyContent = <>
+    {!history ? <p role="status">Loading reports…</p> : history.items.length ? <ul>{history.items.map(item => <li key={item.id}><button className="history-link" onClick={() => { setReportId(item.id); setError(''); }}><strong>{item.title}</strong><span>{new Date(item.created_at).toLocaleDateString()} · {Math.round(item.coverage * 100)}% coverage · {item.effective_mode === 'hybrid' ? 'Hybrid' : 'Rules-only'}{item.degradation_reason ? ' (external review unavailable)' : ''}</span></button></li>)}</ul> : <p className="muted">Your completed reports will appear here.</p>}
+    {history && history.total > 10 && <nav className="pagination" aria-label="History pages"><button disabled={!historyPage} onClick={() => setHistoryPage(p => p - 1)}>Previous</button><span>{historyPage + 1}</span><button disabled={(historyPage + 1) * 10 >= history.total} onClick={() => setHistoryPage(p => p + 1)}>Next</button></nav>}
+  </>;
   return <>
     <a href="#main" className="skip-link">Skip to content</a>
     <header className="site-header"><a className="brand" href="#main">Terms<span>Lens</span></a><span className="header-note">Policy evidence, in plain view.</span>
       {auth && <div className="account"><span>{auth.user.username}</span><button disabled={busy} onClick={() => void logout()}>Log out</button></div>}
     </header>
     <main id="main" tabIndex={-1}>
-      <div className="intro"><p className="eyebrow">Read the terms with evidence</p><h1>Understand what a policy says.</h1><p>Review supported clauses, follow the original evidence, and keep a private history.</p></div>
+      {!reportId && <div className="intro"><p className="eyebrow">Read the terms with evidence</p><h1>Understand what a policy says.</h1><p>See what needs attention, what works in your favor, and what is still unclear.</p></div>}
       {error && <div className="error" role="alert">{error}</div>}
       {starting ? <p role="status">Checking your session…</p> : !auth ? <section className="card auth-card" aria-labelledby="auth-title">
         <h2 id="auth-title">{register ? 'Create your private account' : 'Welcome back'}</h2><p>Your reports are accessible only from your account.</p>
@@ -184,41 +198,44 @@ export default function App() {
         </form>
         <button className="text-button" disabled={busy} onClick={() => { setRegister(v => !v); setPassword(''); setError(''); }}>{register ? 'Already registered? Log in' : 'Create an account'}</button>
       </section> : <>
-        <div className="workspace">
+        {reportId && <div className="report-toolbar"><button type="button" onClick={() => { setReportId(null); setReport(null); setConsent(false); if (!activeJob) { setJobId(null); setJob(null); } }}>← New analysis</button>
+          <details className="history-picker history"><summary>Your history</summary>{historyContent}</details></div>}
+        {!reportId && <div className="workspace">
           <section className="card" aria-labelledby="paste-title"><div className="section-heading"><h2 id="paste-title">Analyze a policy</h2><span className="badge">{mode === 'hybrid' ? 'Hybrid' : 'Rules-only'}</span></div>
             <p>Paste one English policy or enter its public URL. Captures and reports are saved privately.</p>
             <form onSubmit={event => void submit(event)}>
               <div className="form-row"><label>Report title<input maxLength={160} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Store privacy policy" /></label>
-                <label>Policy type<select value={documentType} onChange={e => { setDocumentType(e.target.value as DocumentType); setConsent(false); }}><option value="privacy">Privacy</option><option value="terms">Terms</option><option value="cookies">Cookies</option><option value="refund">Refund</option></select></label></div>
-              <ReviewOptions mode={mode} consent={consent} available={hybridAvailable} onMode={value => { setMode(value); setConsent(false); }} onConsent={setConsent} />
-              <label>Policy source<select value={inputKind} onChange={e => { setInputKind(e.target.value as 'paste' | 'url'); setConsent(false); }}>
+                <label>Policy type<select aria-label="Policy type" value={documentType} onChange={e => { setDocumentType(e.target.value as DocumentType); setConsent(false); }}><option value="privacy">Privacy</option><option value="terms">Terms</option><option value="cookies">Cookies</option><option value="refund">Refund</option></select></label></div>
+              <ReviewOptions mode={mode} consent={consent} available={hybridAvailable} unavailableReason={hybridReason} onMode={value => { setMode(value); setConsent(false); }} onConsent={setConsent} />
+              <label>Policy source<select aria-label="Policy source" value={inputKind} onChange={e => { setInputKind(e.target.value as 'paste' | 'url'); setConsent(false); }}>
                 <option value="paste">Paste text</option><option value="url">Public URL</option>
               </select></label>
               {inputKind === 'url' ? <URLInput key={auth.user.id} value={url} csrf={auth.csrf_token} onPending={setDiscovering}
                 onChange={value => { setUrl(value); setConsent(false); }}
                 onSelect={candidate => { setUrl(candidate.url); setDocumentType(candidate.document_type); setConsent(false); }} /> : <>
-              <label>Policy text<textarea rows={10} maxLength={200000} required value={text} onChange={e => { setText(e.target.value); setConsent(false); }} aria-describedby="text-hint" /></label>
+              <label>Policy text<textarea aria-label="Policy text" rows={10} maxLength={200000} required value={text} onChange={e => { setText(e.target.value); setConsent(false); }} aria-describedby="text-hint" /></label>
               <div className="form-meta"><small id="text-hint">{words.toLocaleString()} / 25,000 words · up to 200,000 characters</small><button type="button" className="text-button" onClick={() => { setText(example); setTitle('Engineering example'); setDocumentType('privacy'); setConsent(false); }}>Fill an example</button></div>
               </>}
               <button className="primary" disabled={busy || activeJob || discovering || !inputReady || (mode === 'hybrid' && (!hybridAvailable || !consent))}>{busy ? 'Submitting…' : activeJob ? 'Analysis in progress' : 'Analyze policy'}</button>
             </form>
           </section>
           <aside className="card history" aria-labelledby="history-title"><h2 id="history-title">Your history</h2>
-            {!history ? <p role="status">Loading reports…</p> : history.items.length ? <ul>{history.items.map(item => <li key={item.id}><button className="history-link" onClick={() => { setReportId(item.id); setError(''); }}><strong>{item.title}</strong><span>{new Date(item.created_at).toLocaleDateString()} · {Math.round(item.coverage * 100)}% coverage ? {item.effective_mode === 'hybrid' ? 'Hybrid' : 'Rules-only'}{item.degradation_reason ? ' (external review unavailable)' : ''}</span></button></li>)}</ul> : <p className="muted">Your completed reports will appear here.</p>}
-            {history && history.total > 10 && <nav className="pagination" aria-label="History pages"><button disabled={!historyPage} onClick={() => setHistoryPage(p => p - 1)}>Previous</button><span>{historyPage + 1}</span><button disabled={(historyPage + 1) * 10 >= history.total} onClick={() => setHistoryPage(p => p + 1)}>Next</button></nav>}
+            {historyContent}
           </aside>
-        </div>
-        {jobId && <section className="card progress" aria-labelledby="progress-title"><h2 id="progress-title">Analysis progress</h2><p role="status" aria-live="polite">{job ? labels[job.stage] || job.stage : 'Loading job status…'}{job?.error ? `: ${job.error}` : ''}</p>
+        </div>}
+        {jobId && !reportId && <section className="card progress" aria-labelledby="progress-title"><h2 id="progress-title">Analysis progress</h2><p role="status" aria-live="polite">{job ? labels[job.stage] || job.stage : 'Loading job status…'}{job?.error ? `: ${job.error}` : ''}</p>
           <ol>{stages.map((value, index) => <li key={value} className={job && index <= stages.indexOf(job.stage) ? 'reached' : ''} aria-current={job?.stage === value ? 'step' : undefined}>{labels[value]}</li>)}</ol>
           {job?.state === 'queued' && <p className="muted">Waiting for the worker. You can leave this page and reopen the report from history after it completes.</p>}
           {job?.operation === 'refresh' && job.checked_at && <p>Source checked {new Date(job.checked_at).toLocaleString()}. {job.capture_changed ? 'A new version was captured.' : 'The captured content is unchanged.'} {job.result_reused ? 'Reopened the compatible saved report without another external review.' : ''}</p>}
           <div className="pagination"><button onClick={() => { setError(''); setPollRevision(n => n + 1); }}>Check status again</button><button onClick={() => { saveJob(auth.user.id, null); setJobId(null); setJob(null); }}>Close progress</button></div>
         </section>}
         {reportLoading && <p role="status">Loading saved report…</p>}
-        {report && <ReportView key={report.id} report={report} />}
-        {report && <DocumentHistory key={report.id} report={report} csrf={auth.csrf_token} hybridAvailable={hybridAvailable} activeJob={activeJob} onJob={watchJob} onOpen={setReportId} />}
-        {report && <ComparisonPanel key={report.id} report={report} csrf={auth.csrf_token} />}
-        {report && <DocumentDelete key={report.document_id} documentId={report.document_id} csrf={auth.csrf_token} onAccepted={deleted} />}
+        {report && <ReportView key={`report-${report.id}`} report={report} />}
+        {report && <div className="report-actions" key={`actions-${report.id}`}>
+          <details><summary>Versions and reanalysis</summary><DocumentHistory report={report} csrf={auth.csrf_token} hybridAvailable={hybridAvailable} hybridReason={hybridReason} activeJob={activeJob} onJob={watchJob} onOpen={setReportId} /></details>
+          <details><summary>Compare saved reports</summary><ComparisonPanel report={report} csrf={auth.csrf_token} /></details>
+          <details><summary>Manage this document</summary><DocumentDelete documentId={report.document_id} csrf={auth.csrf_token} onAccepted={deleted} /></details>
+        </div>}
         <DeletionStatus key={auth.user.id} revision={deletionRevision} />
       </>}
       <footer>Automated analysis, not legal advice. Rules cover selected patterns across eight clause groups; unfamiliar wording remains unrated.</footer>

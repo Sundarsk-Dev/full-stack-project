@@ -14,7 +14,7 @@ def main():
     for name, digest in BASELINES.items():
         assert sha256((ROOT / name).read_bytes()).hexdigest() == digest, f"Frozen input changed: {name}"
         print(f"PASS unchanged: {name}")
-    for name in ["plan-proposal.md", "implementation-workflow.md", "architecture-debugging.md", "url-fetching.md", "versions.md", "comparisons-deletion.md", "verification-checklist.md", "transfercontext.md", "README.md", "RUNNING.md", "DEMO.md", "eval/fixtures/wordpress-terms-demo.md", "eval/README.md", "working.md"]:
+    for name in ["plan-proposal.md", "implementation-workflow.md", "architecture-debugging.md", "url-fetching.md", "versions.md", "comparisons-deletion.md", "verification-checklist.md", "transfercontext.md", "README.md", "RUNNING.md", "DEMO.md", "eval/fixtures/wordpress-terms-demo.md", "eval/fixtures/consumer-demo.md", "eval/README.md", "reports/README.md", "working.md"]:
         file = ROOT / name
         if name == "working.md" and not file.exists(): continue
         assert file.is_file(), f"Missing maintained reference: {name}"

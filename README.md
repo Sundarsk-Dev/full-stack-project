@@ -1,6 +1,8 @@
 # TermsLens
 
-React/Vite/TypeScript, FastAPI and MySQL. **User reports the request and output work; the report UI is difficult to understand and needs improvement.** Both databases are migrated. Detailed runtime/provider acceptance and evaluation remain open in the [checklist](verification-checklist.md).
+[Mini project report: PDF and editable Word](reports/README.md)
+
+React/Vite/TypeScript, FastAPI and MySQL. **Reports now open with a score overview, concerns, favorable findings and unresolved clauses.** Hybrid is the default when available; sending text still needs consent. Both databases are migrated. Full runtime/provider acceptance and evaluation remain open in the [checklist](verification-checklist.md).
 
 ## Start here: existing Windows workspace
 
@@ -30,31 +32,31 @@ Leave both terminals open. `Worker started. Waiting for jobs…` means it is run
 ## Submit and read the output
 
 1. Register or log in. Choose the correct policy type, give the report a recognizable title, and select Paste text.
-2. In a third terminal at the project root, copy the sample below, then paste into the app. Choose **Hybrid** and consent for AI, or **Rules-only** for local analysis.
-3. Click **Analyze policy** once. Leave the worker open while Analysis progress advances. Read the saved report when it completes.
-4. Use history to reopen it. Reopening, filtering, changing score profiles and viewing the saved baseline do not request another AI review.
+2. In a third terminal at the project root, copy the sample below, then paste into the app. **Hybrid** is selected when available; check consent for AI, or choose **Rules-only** to keep text local.
+3. Click **Analyze policy** once. Leave the worker open. The completed report replaces the input form and opens at its overview.
+4. Use **Your history** to reopen reports or **New analysis** to return to the form. Filters, profiles, baseline switching and reopening make no AI calls.
 
 ```powershell
-Get-Content -LiteralPath './eval/fixtures/wordpress-terms-demo.md' -Raw -Encoding UTF8 | Set-Clipboard
+Get-Content -LiteralPath './eval/fixtures/consumer-demo.md' -Raw -Encoding UTF8 | Set-Clipboard
 ```
 
-The attributed WordPress refunds excerpt fits one AI batch. It is not the full contract or an accuracy benchmark. A short excerpt can reasonably leave many categories unknown.
+The **434-word synthetic consumer demo** gives 14 rule findings (nine concerns/five protections); six clauses fit AI review. See [expected output](DEMO.md#consumer-walkthrough). Use **Terms**. This is an engineering example, not measured accuracy.
 
 | Output | How to interpret it |
 |---|---|
 | Requested / Saved result | Requested is your choice; Saved result is what actually ran. Hybrid requested with Rules-only saved means fallback. |
-| Score range / 100 | **Higher is more favorable.** The range reflects unresolved evidence; it is not a confidence percentage or legal verdict. |
+| Score range / 100 | **Higher is more favorable.** Unknowns widen the range. Zero rated clauses show **Not enough evidence**, with the raw bounds under How to read this score. |
 | Grade or no grade | A letter needs at least 80% clause coverage, consistent scope and both score bounds in the same grade band. No grade means insufficient evidence. |
 | Clause coverage | Percentage of substantive clauses with an accepted finding, not measured accuracy. |
 | Severity / 5 | **Higher is more concerning:** favorable 0, neutral 1, concerning 2–3, invasive 4–5. This runs opposite to the overall score. |
 | Unknown / Unrated | No supported interpretation; it does not mean safe. Read the clause and its explanation. |
 | Finding source / Model | Distinguishes rule matches, reviewed exact matches and AI findings; AI findings show recorded model provenance. Zero accepted AI findings alone does not prove a provider failure. |
 
-Start with **Rating → invasive**, then **concerning**. Use **Highlight exact evidence for clause…** to jump to the quote in **Saved source text** and read its context. To see unrated clauses, reset Category, Rating and Finding source to **All**, then enable **Include unrated clauses**. Use Previous/Next clauses for longer reports.
+Start with **Needs attention** and **Favorable findings**. **Inspect evidence** opens the exact quote and surrounding source in a dialog; Escape closes it and restores focus. **Explore the findings** separates concerns, favorable, neutral and unresolved clauses. Group buttons reset narrower filters; advanced filters sit under **Filter by category, rating or source**. Longer reports use eight clauses per page.
 
-**Show rules-only baseline** compares the saved local interpretation with the saved result. **Scoring profile → Privacy-first** changes category weights using the same evidence. **Versions and reanalysis** preserves older captures/reports; reanalysis can request AI again. **Compare saved reports** needs the same policy type and compatible review settings and makes no AI calls. Deletion requires confirmation and a running worker for cleanup; wait for its receipt.
+Open **Score profile, review details and category breakdown** for the saved rules-only baseline, Privacy-first weights and provenance. Expand **Versions and reanalysis** or **Compare saved reports** below the report when needed. Reanalysis can request AI again; comparing compatible reports makes no AI calls. **Manage this document** contains confirmed deletion; keep the worker running for cleanup.
 
-The user-reported output readability issue is open: prioritize a clearer summary, concern/evidence hierarchy and simpler controls in the next UI task. Current documentation explains existing controls; a redesign has not been completed.
+Desktop/mobile Playwright checks pass. Per-request input is now 6,000; two calls still share 10,000 input/2,000 output and account quotas. The 97-clause policy remains context-limited; the demo does not establish general-policy coverage.
 
 ## Current scope
 
@@ -76,7 +78,7 @@ Keep the database URLs and Groq key in private `.env`; the password helper prese
 
 ## Groq readiness and authorization
 
-Live testing is authorized; account/quiet-usage confirmation and limits were recorded privately. The user now reports a working request/output after the AI setup instructions, but saved mode/model/usage have not been inspected. Do not repeat setup for a working configuration. [Demo setup](DEMO.md) covers missing readiness; the existing httpx adapter uses Chat Completions.
+Live testing is authorized; readiness renewal sent no inference. Latest inspected report: limited/Rules-only, zero AI provenance. Skip setup when configured.
 
 For an unconfigured demo only, stop API/worker and run the setup below. It requires current saved account evidence. The optional official tokenizer is a setup tool, not an application dependency:
 
@@ -85,7 +87,13 @@ For an unconfigured demo only, stop API/worker and run the setup below. It requi
 .venv/Scripts/python.exe scripts/configure_groq_demo.py
 ```
 
-Setup uses saved confirmation, checks official model framing/token estimates and authenticated model availability, then writes a private four-hour record and enables AI. It sends no inference, resets no ledger and preserves existing records. [Example](groq-readiness.example.json) remains invalid; manual records require actual evidence:
+Setup checks model/tokenizer and enables AI until account confirmation +24 hours, without inference or usage resets. To renew an older expired record within that window, run from the root and refresh:
+
+```powershell
+.venv/Scripts/python.exe scripts/configure_groq_demo.py --renew
+```
+
+Renewal rechecks model/tokenizer and archives the old record, preserving account/usage. It cannot extend expired account evidence. The UI explains failures; see [recovery](DEMO.md#when-ai-becomes-unavailable). [Example](groq-readiness.example.json) remains invalid; manual records require evidence:
 
 | Field | Required evidence / validation |
 |---|---|
@@ -99,7 +107,7 @@ Setup uses saved confirmation, checks official model framing/token estimates and
 
 Records are limited to 16 KiB and 1-16 limits. Resources are `requests`, `total_tokens`, `input_tokens`, `output_tokens`; require requests plus total tokens or both input/output tokens. Periods are 1 second to 31 days; capacities are integers from 1 to 1,000,000,000. Unknown fields/types, duplicate names, incomplete attestations, mismatched model/estimator or expired evidence fail closed. Keep account/quota names and persisted ledger rows stable; never reset budgets to regain capacity.
 
-Only after readiness evidence and scoped live-call authorization exist may the normal worker be enabled. Restart API and worker after environment changes; readiness JSON is reread on health checks and each hybrid claim, and reservations enforce its expiry. `configured` means local validation passed, not live acceptance. Per-job Groq consent is still required. Rules-only launches no provider process. `app.worker --test` and `app.manage --test` always clear provider settings and use only the test database, even when production Groq is enabled.
+Enable the worker only with readiness and live-call authorization. Restart API/worker after environment changes. Health/hybrid claims reread readiness; reservations enforce expiry. `configured` is local validation, not live acceptance. Per-job consent is required. Rules-only launches no provider; worker/manage `--test` clear provider settings and use only the test database.
 
 Transport sends once to the fixed Groq endpoint with no redirects, environment proxies or internal retries. A parent deadline kills/reaps stalled children; an independent child watchdog bounds a send if the worker is stopped. Responses have 128-KiB envelope/64-KiB content caps. Unknown outcomes keep reservations and are never automatically resent; only a known 429 can use the coordinator's one retry with <=2 seconds wait. Both attempts share the two-request/12-clause/10,000-input/2,000-output ceilings.
 

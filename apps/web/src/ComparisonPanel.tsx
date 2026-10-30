@@ -88,11 +88,11 @@ export default function ComparisonPanel({ report, csrf }: { report: Report; csrf
     <p>Use two reports of the same policy type and matching review settings. If settings differ, reanalyze their saved captures first. Comparing makes no external-review calls.</p>
     {error && <p className="error" role="alert">{error}</p>}
     <form onSubmit={event => void compare(event)}>
-      <label>Compare this report with<select required value={rightId} onChange={e => setRightId(e.target.value)}>
+      <label>Compare this report with<select aria-label="Compare this report with" required value={rightId} onChange={e => setRightId(e.target.value)}>
         <option value="">Select another saved report</option>{history?.items.filter(item => item.id !== report.id && item.document_type === report.document_type).map(item =>
           <option key={item.id} value={item.id}>{item.title} · v{item.version_number || 1}/r{item.revision_number || 1} · {item.effective_mode === 'hybrid' ? 'Hybrid' : 'Rules-only'}</option>)}
       </select></label>
-      <label>Comparison scoring profile<select value={profile} onChange={e => setProfile(e.target.value as ProfileId)}><option value="balanced">Balanced</option><option value="privacy_first">Privacy-first</option></select></label>
+      <label>Comparison scoring profile<select aria-label="Comparison scoring profile" value={profile} onChange={e => setProfile(e.target.value as ProfileId)}><option value="balanced">Balanced</option><option value="privacy_first">Privacy-first</option></select></label>
       <button className="primary" disabled={busy || !rightId}>{busy ? 'Comparing…' : 'Compare reports'}</button>
     </form>
     {history && history.total > 20 && <nav className="pagination" aria-label="Comparison report choices"><button disabled={!historyPage} onClick={() => setHistoryPage(n => n - 1)}>Previous report choices</button><span>{historyPage + 1}</span><button disabled={(historyPage + 1) * 20 >= history.total} onClick={() => setHistoryPage(n => n + 1)}>Next report choices</button></nav>}

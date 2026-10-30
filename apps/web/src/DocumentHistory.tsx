@@ -15,8 +15,9 @@ export function VersionList({ history, onSelect, onOpen }: {
   </li>)}</ul>;
 }
 
-export default function DocumentHistory({ report, csrf, hybridAvailable, activeJob, onJob, onOpen }: {
+export default function DocumentHistory({ report, csrf, hybridAvailable, hybridReason, activeJob, onJob, onOpen }: {
   report: Report; csrf: string; hybridAvailable: boolean; activeJob: boolean; onJob: (id: string) => void; onOpen: (id: string) => void;
+  hybridReason?: string;
 }) {
   const [history, setHistory] = useState<VersionHistory | null>(null);
   const [revisions, setRevisions] = useState<RevisionHistory | null>(null);
@@ -25,7 +26,8 @@ export default function DocumentHistory({ report, csrf, hybridAvailable, activeJ
   const [selected, setSelected] = useState({ id: report.version_id, number: report.version_number || 1 });
   const [action, setAction] = useState<'refresh' | 'reanalysis'>('refresh');
   const [text, setText] = useState(report.text);
-  const [mode, setMode] = useState<ReviewMode>('rules_only');
+  const [modeChoice, setMode] = useState<ReviewMode | null>(null);
+  const mode: ReviewMode = hybridAvailable ? modeChoice || 'hybrid' : 'rules_only';
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -34,6 +36,7 @@ export default function DocumentHistory({ report, csrf, hybridAvailable, activeJ
   const paste = report.source_kind !== 'url';
   const words = text.trim() ? text.trim().split(/\s+/u).length : 0;
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => { setConsent(false); }, [hybridAvailable]);
   useEffect(() => {
     const controller = new AbortController(); setHistory(null);
     api<VersionHistory>(`/documents/${report.document_id}/versions?limit=10&offset=${page * 10}`, { signal: controller.signal })
@@ -81,13 +84,13 @@ export default function DocumentHistory({ report, csrf, hybridAvailable, activeJ
       <span>{revision.effective_mode === 'hybrid' ? 'Hybrid' : 'Rules-only'}{revision.degradation_reason ? ' (external review unavailable)' : ''} · {new Date(revision.created_at).toLocaleString()}</span>
     </li>)}</ul>{revisions.total > 10 && <nav className="pagination" aria-label="Report revision pages"><button disabled={!revisionPage} onClick={() => setRevisionPage(n => n - 1)}>Previous revisions</button><span>{revisionPage + 1}</span><button disabled={(revisionPage + 1) * 10 >= revisions.total} onClick={() => setRevisionPage(n => n + 1)}>Next revisions</button></nav>}</> : <p role="status">Loading revisions…</p>}
     <form onSubmit={event => void submit(event)}>
-      <label>Document action<select value={action} onChange={e => { setAction(e.target.value as 'refresh' | 'reanalysis'); setConsent(false); }}>
+      <label>Document action<select aria-label="Document action" value={action} onChange={e => { setAction(e.target.value as 'refresh' | 'reanalysis'); setConsent(false); }}>
         <option value="refresh">{paste ? 'Replace pasted text' : 'Check URL for changes'}</option>
         <option value="reanalysis">Reanalyze saved version {selected.number}</option>
       </select></label>
       <p className="muted">{action === 'refresh' ? 'Checks the current document. Changed text or context creates a version; unchanged content can reuse a compatible report.' : 'Uses the selected saved capture without fetching. Creates a new report revision with current rules and your selected review mode.'}</p>
-      {action === 'refresh' && paste && <><label>Replacement policy text<textarea rows={7} required maxLength={200000} value={text} onChange={e => { setText(e.target.value); setConsent(false); }} /></label><small>{words.toLocaleString()} / 25,000 words. Starts with this report's text; review it before replacing the current document.</small></>}
-      <ReviewOptions mode={mode} consent={consent} available={hybridAvailable} onMode={value => { setMode(value); setConsent(false); }} onConsent={setConsent} />
+      {action === 'refresh' && paste && <><label>Replacement policy text<textarea aria-label="Replacement policy text" rows={7} required maxLength={200000} value={text} onChange={e => { setText(e.target.value); setConsent(false); }} /></label><small>{words.toLocaleString()} / 25,000 words. Starts with this report's text; review it before replacing the current document.</small></>}
+      <ReviewOptions mode={mode} consent={consent} available={hybridAvailable} unavailableReason={hybridReason} onMode={value => { setMode(value); setConsent(false); }} onConsent={setConsent} />
       <button className="primary" disabled={busy || activeJob || (action === 'refresh' && paste && (!text.trim() || words > 25000)) || (mode === 'hybrid' && (!hybridAvailable || !consent))}>
         {busy ? 'Submitting…' : action === 'refresh' ? 'Check and analyze changes' : `Reanalyze version ${selected.number}`}
       </button>

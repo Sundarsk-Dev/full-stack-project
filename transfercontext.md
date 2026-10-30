@@ -1,40 +1,30 @@
 # Session handoff
 
-Updated 2026-10-30. User confirms request/output works, but report UI is hard to understand. Startup, output guidance and Git commands now lead README. DB migrations pass; detailed runtime/provider/UI acceptance remains open.
+Updated 2026-10-30. Latest task complete: comprehensive TermsLens mini project report with supplied cover/output images, architecture, security, rate limits, failure engineering and limitations. Application runtime/evaluation acceptance remains pending.
 
-## Scope
-- Latest scope: record working request and poor output usability; document end-to-end startup/output and Git commands; update .gitignore. Docs/config only this step. Earlier live test remains authorized; account/quiet usage confirmed. No new accounts/purchases/agents. Ponytail.
-- Preserve plan-proposal.md, TermsLens_Project_Plan.md and Assignment_10_Report.pdf. Start with AGENTS/this handoff. MySQL/full stack required; README/workflow/checklist hold contracts.
+## Scope and authorization
+- User requested a report using page 1 of Assignment_10_Report.pdf, titled Mini Project, and images from sampe output.pdf; also requested security/rate-limiting coverage. PDF and editable Word delivered. No application changes, network/provider calls, installations, agents or Git writes for this task.
+- Preserve plan-proposal.md, TermsLens_Project_Plan.md, Assignment_10_Report.pdf and sampe output.pdf. Prior UI/demo changes remain uncommitted; preserve all user work. Ponytail remains active for coding.
 
-## Existing foundation
-- Paste/URL/discovery, owned jobs/sessions/CSRF/rates, immutable captures/reports, worker leases/recovery and atomic publication. Eight rule groups/profiles/Unicode; library empty-v1. AI consent/quotas/provenance persist; unknown outcomes never auto-resend.
-- Groq model openai/gpt-oss-20b/key private. Limits 30 RPM/1000 RPD/8000 TPM/200000 TPD and dated account/quiet-usage confirmation in var/groq-demo-evidence.json. User reports working output after setup instructions; current saved mode/model/usage not inspected. Do not infer provider acceptance or repeat setup blindly.
-- URL children/test storage isolated, test Groq cleared; captures recover without refetch. versions.md/url-fetching.md cover immutable revisions, A -> B -> A, context reruns and compatible reuse.
+## Report deliverables and checks
+- reports/TermsLens_Mini_Project_Report.pdf: 22 pages, linked contents/13 bookmarks, eight numbered figures (two diagrams + six supplied-output crops), cover, references and run commands. Cover retains student/faculty/course/institution details; generated title changed to Mini Project only.
+- reports/TermsLens_Mini_Project_Report.docx: editable body with nine embedded images including cover and eight tables. Word pagination may differ; PDF is the visually reviewed version.
+- scripts/build_project_report.py regenerates both using installed host Python pypdfium2/Pillow/reportlab/python-docx and Windows fonts. No DB/network access. reports/README.md documents reproduction; README links it.
+- Rendered all PDF pages for visual review; fixed an orphan paragraph. Final checks: 22 pages, required sections and score values present, no sparse/orphan text pages, nine embedded images, all text boxes within page bounds; Word opens structurally with its images/tables. Source-hash manifest and previews are private under var/report-build.
+- Supplied print shows Privacy selected, requested Hybrid/effective Rules-only, external review unavailable, 14/20 rated, nine concerns/five favorable, six unresolved, 0–52 range and a scope warning. Report explains why Terms baseline is 0–42.5. This print does not prove successful live AI.
+- Frozen/source hashes, document caps and git diff --check passed closeout. G5-03 remains unchecked because report delivery does not complete runtime/evaluation acceptance.
 
-## Latest implementation
-- comparisons-deletion.md holds contracts/eight prepared MySQL checks. Owner-before-document locks fix reviewed FK-order risk; tombstones/cursor cleanup preserve other reports/quotas. OS barriers fence stale writes. Runtime proof pending.
-- Both schemas use 20261029_lifecycle. Worker logs startup after singleton lock acquisition, catches Ctrl+C and disposes engine; interrupted jobs are not retried inline.
-- README starts with both terminal commands, submit/read/reopen guidance, scores vs severity, unrated filters, baseline/profiles/comparison/deletion and Git updates. Fresh setup moved intact into RUNNING.md. No UI redesign yet; prioritize readable summary/concerns/evidence and simpler controls next.
-- .gitignore now also covers tool caches, coverage/browser reports, venv and TypeScript build metadata. Secrets/var excluded; source fixtures/examples/lockfiles retained. Branch main and remote origin observed; earlier commit fa4cf02, push unverified. No staging/commit/push this step; Git commands prepared for user.
-- DEMO.md covers clipboard and guarded AI startup. eval/fixtures/wordpress-terms-demo.md: 52-word WordPress refunds excerpt, attributed CC BY-SA 4.0, source paragraph unchanged. Existing online capture; not freshly fetched or human-labeled.
-- scripts/configure_groq_demo.py verifies official framing/demo tokens and GET /models, then writes private readiness (<=4h within confirmation's 24h) and enables AI. No inference, silent renewal or ledger reset. Use user's working terminal when setup is needed. app.manage retains safe errors.
+## Retained implementation and demo
+- React UI opens a focused overview with risks/protections/unknowns, eight-clause pages, exact-evidence dialog, profiles/baseline and saved actions. Hybrid defaults when available with unchecked consent; source/type/action changes reset consent. Fixed health messages distinguish disabled/expired/unreachable conditions.
+- AI input reservation is 6,000/request (+20%) with shared INPUT_TOTAL=10,000, two requests, twelve clauses, 2,000 output and actual account quotas. Larger first batches reduce retry capacity; prompt revision v2 prevents old-call identity reuse. No context truncation or scoring changes.
+- eval/fixtures/consumer-demo.md: synthetic 434-word/20-clause engineering example. Fourteen rule findings, 70% coverage, 0–42.5 range under Terms, no grade. Six unfamiliar clauses fit four/two batches reserving 5,370/3,445 input; no live inference established. Details in DEMO.md.
+- Prior checks retained: 71 contract/ledger/review/persistence/version tests +29 Groq transport/child tests; build/22 Node/nine setup/Playwright smoke pass. Browser uses mocked API; child tests make no real provider calls.
+- Private var/ui-review/context-input.json/context-before.json reproduce the 97-clause failure; latest-report.json has the earlier 290-clause failure. Both select zero AI clauses. Global CONTEXT_GUARD suppresses all local rules and _payload collects every guarded paragraph. General context/rule improvements were deferred when user narrowed to the demo.
+- Both MySQL schemas passed login/migration checks: 8.0.28, utf8mb4, 20261029_lifecycle. Core paste/URL/lifecycle/worker and Groq isolation implemented. Real restart/two-user/race acceptance, human labels/library, quality evaluation and benchmark remain open.
+- Actual user health failure was disabled: set TERMSLENS_GROQ_ENABLED=true in each API/worker terminal before launch. Last renewed readiness expires October 31, 00:18 IST. Renewal preserves usage and requires current account evidence; never extend a timestamp to bypass verification.
+- Keys/URLs remain private. Account limits last recorded for openai/gpt-oss-20b: 30 RPM/1000 RPD/8000 TPM/200000 TPD. .gitignore protects secrets, var and dependencies. Preserve source captures and lockfiles.
 
-## Actual checks
-- Retain worker/test-Groq isolation (5) and fake-setup (5) passes. This step: frozen/doc limits, git diff --check and ignore rules pass; no tracked file matches ignores. No runtime/provider retest.
-- User: both migration checks PASS MySQL 8.0.28, termslens_db/termslens_test, utf8mb4, revision 20261029_lifecycle (G1-04/05 closed). Registration and basic request/output work. User finds report UI poor/hard to understand. Precise findings/provenance, reopen/isolation/recovery and UI accessibility remain unobserved.
-- Earlier agent DB check hit MySQL 2003; GET /models failed ConnectError. User's later working flow supersedes their blocker, not agent restrictions. No new provider call or artifact inspection this step.
-- Retain: six basic backend checks, frontend build/18 Node tests, 66 owner-lock/harness checks, eight-test opt-in guard, prior migrations/181-test baseline and URL/version/lifecycle evidence. MySQL/browser runtime remains pending.
-
-## Deferred facts
-- MySQL 1045 resolved; existing scoped accounts and utf8mb4_bin schemas work. Do not recreate/reset accounts or request passwords. Agent restrictions are separate.
-- Private URLs/key preserved; dotenv last definition wins, process environment overrides. .venv Python 3.11.3 requirements/pip check passed (Alembic 1.13.1/PyMySQL 1.1.1/httpx 0.27.0). No extra .env pasting needed.
-- Agent HTTP timed out at 45s; socket 10013/browser restrictions persist. User WordPress HTTPS/Groq TCP passed. Retry only after changed conditions. Fresh npm ci, real MySQL/HTTP/browser acceptance pending.
-- WordPress: var/eval/sources/wordpress-terms/8486343d2107439f860e17420a50dfd1; hashes verified, October 6, 2026/CC BY-SA 4.0 observed. Rights review pending. var/eval/reviews/wordpress-review-v1.json has 417 candidates, zero labels. See eval/README.md.
-- Preserve var archives/caches: prior cleanup auto-rejected, sandbox approvals disabled. No working.md or duplicate handoff.
-
-## Pending work
-- Next proposed task: improve output UI summary, issue prioritization, score/unknown explanations and evidence navigation; preserve scoring/provenance. User requested recording the issue, so this turn delivered documentation rather than redesign. Full gates remain pending.
-- Normal demo startup is at README top. Reopen existing reports to inspect output; no repeat AI calls needed for UI work. Only configure Groq when missing/expired readiness needs attention; keep account identity/ledger stable. No --test for AI or auto-resubmission after unknown outcomes.
-
-## Reproduction
-- Root: .venv/Scripts/python.exe scripts/check_context.py; git diff --check; git ls-files -ci --exclude-standard. README has startup/copy/Git commands; RUNNING.md fresh setup; DEMO.md guarded AI setup. Existing report controls match ReportView.tsx, DocumentHistory.tsx and ComparisonPanel.tsx.
+## Next work / reproduction
+- Report: python scripts/build_project_report.py. Root checks: .venv/Scripts/python.exe scripts/check_context.py; git diff --check. No broad application rerun needed for report edits.
+- Demo: follow README startup, copy consumer-demo.md with Get-Content -Raw -Encoding UTF8 | Set-Clipboard; choose Terms/Hybrid with fresh consent. Inspect actual saved mode/provenance before claiming AI success. Do not alter old reports.
+- Report task is complete. Further app work follows user direction; retain pending context/quality/runtime gates and the existing frozen plan.

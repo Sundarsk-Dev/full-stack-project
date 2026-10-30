@@ -16,6 +16,7 @@ function component(name, exported = 'default') {
   return module.exports[exported];
 }
 const ReportView = component('ReportView');
+const ReportOverview = component('ReportOverview');
 const ReviewOptions = component('ReviewOptions');
 const URLInput = component('URLInput');
 const CandidateList = component('URLInput', 'CandidateList');
@@ -147,4 +148,46 @@ test('document deletion initially exposes only the confirmation entry point', ()
   assert.match(html, /type="button">Delete all versions of this document/);
   assert.match(html, /Active jobs must finish first/);
   assert.doesNotMatch(html, />Confirm deletion<|type="submit"/);
+});
+
+test('a zero-evidence result cannot present the upper bound as a supported score', () => {
+  const empty = { ...report, review_status: 'limited', score: { ...score, best: 100, coverage: 0 },
+    clauses: [{ id: 1, text: 'Context needed.', substantive: true, findings: [], unrated_reason: 'adequate_context_does_not_fit' }] };
+  const html = renderToStaticMarkup(React.createElement(ReportOverview, { report: empty, shown: empty, score: empty.score, onGroup() {}, onEvidence() {} }));
+  assert.match(html, /Not enough evidence/);
+  assert.match(html, /No supported score yet/);
+  assert.match(html, /1 clause needed more context/);
+  assert.match(html, /No concerning clauses were rated.*Unresolved wording/);
+  assert.doesNotMatch(html, /Grade A|class="score"/);
+});
+
+test('overview separates concerning, favorable and unknown evidence without treating neutral as favorable', () => {
+  const clause = (id, rating, severity) => ({ id, substantive: true, text: `Clause ${id}`, findings: rating ? [
+    { category: 1, rating, severity, source: 'rule', rule_id: `rule-${id}`, explanation: `Explanation ${id}`, quote: `Clause ${id}` },
+  ] : [] });
+  const mixed = { ...report, clauses: [clause(1, 'neutral', 1), clause(2, 'favorable', 0), clause(3, 'concerning', 3), clause(4, null, null)], score: { ...score, coverage: .75 } };
+  const html = renderToStaticMarkup(React.createElement(ReportOverview, { report: mixed, shown: mixed, score: mixed.score, onGroup() {}, onEvidence() {} }));
+  assert.match(html, /1 clause needs attention/);
+  assert.match(html, /Explanation 2/);
+  assert.match(html, /Explanation 3/);
+  assert.doesNotMatch(html, /Explanation 1/);
+  assert.match(html, /3 of 4 substantive clauses rated/);
+  assert.match(html, /1 clause has no supported rating/);
+});
+
+test('available reanalysis defaults to Hybrid but still requires fresh unchecked consent', () => {
+  const html = renderToStaticMarkup(React.createElement(DocumentHistory, { report: { ...report, version_id: 'v' }, csrf: 'test', hybridAvailable: true, activeJob: false, onJob() {}, onOpen() {} }));
+  assert.match(html, /value="hybrid" selected=""/);
+  assert.match(html, /type="checkbox" required/);
+  assert.doesNotMatch(html, /checked=""/);
+});
+
+test('AI unavailability explains known causes without echoing arbitrary health text', () => {
+  const props = { mode: 'rules_only', consent: false, available: false, onMode() {}, onConsent() {} };
+  const expired = renderToStaticMarkup(React.createElement(ReviewOptions, { ...props, unavailableReason: 'verification_expired_or_invalid' }));
+  assert.match(expired, /AI verification has expired.*Renew the local readiness record/);
+  const unavailable = renderToStaticMarkup(React.createElement(ReviewOptions, { ...props, unavailableReason: 'api_unreachable' }));
+  assert.match(unavailable, /API could not be reached/);
+  const unknown = renderToStaticMarkup(React.createElement(ReviewOptions, { ...props, unavailableReason: 'private-unexpected-error' }));
+  assert.doesNotMatch(unknown, /private-unexpected-error/);
 });

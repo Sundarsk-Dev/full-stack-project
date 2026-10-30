@@ -1,7 +1,7 @@
 """Demo setup checks with fake tokenizer/model lookups; no network or inference."""
 from contextlib import redirect_stdout
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from io import StringIO
 import json
 from pathlib import Path
@@ -63,7 +63,7 @@ class GroqDemoSetupTests(unittest.TestCase):
         self.model.side_effect = OSError("test-only-private")
         output = StringIO()
         with redirect_stdout(output), self.assertRaises(SystemExit):
-            demo.main()
+            demo.main([])
         self.assertNotIn("test-only-private", output.getvalue())
         self.assertFalse(Path(self.settings.groq_readiness_file).exists())
         self.assertEqual((self.root / ".env").read_bytes(), self.original)
@@ -81,6 +81,53 @@ class GroqDemoSetupTests(unittest.TestCase):
         with self.assertRaises(demo.SetupError):
             demo.configure()
         self.assertEqual(path.read_bytes(), b"existing-user-record")
+        self.model.assert_not_called()
+
+    def expired_record(self):
+        with redirect_stdout(StringIO()): demo.configure()
+        path = Path(self.settings.groq_readiness_file)
+        record = json.loads(path.read_text(encoding="utf-8"))
+        now = datetime.now(timezone.utc)
+        record.update(verified_at=(now - timedelta(hours=6)).isoformat(), valid_until=(now - timedelta(hours=2)).isoformat())
+        previous = json.dumps(record).encode()
+        path.write_bytes(previous)
+        self.model.reset_mock(); self.estimator.reset_mock()
+        return previous, record
+
+    def test_explicit_renewal_rechecks_preserves_identity_and_archives_previous_record(self):
+        previous, prior = self.expired_record()
+        with redirect_stdout(StringIO()): demo.configure(renew=True)
+        current = json.loads(Path(self.settings.groq_readiness_file).read_text(encoding="utf-8"))
+        for key in ("account_id", "model", "limits"):
+            self.assertEqual(current[key], prior[key])
+        expected_expiry = datetime.fromisoformat(self.evidence["account_confirmed_at"]) + timedelta(hours=24)
+        self.assertEqual(datetime.fromisoformat(current["valid_until"].replace("Z", "+00:00")), expected_expiry)
+        self.assertIsNotNone(groq_readiness(replace(self.settings, groq_enabled=True)).policy)
+        self.assertEqual(next((self.root / "var/groq-readiness-history").iterdir()).read_bytes(), previous)
+        self.model.assert_called_once(); self.estimator.assert_called_once()
+
+    def test_failed_renewal_preserves_expired_record_and_env(self):
+        previous, _ = self.expired_record()
+        original_env = (self.root / ".env").read_bytes()
+        self.model.side_effect = demo.SetupError("Model verification failed.")
+        with self.assertRaises(demo.SetupError): demo.configure(renew=True)
+        self.assertEqual(Path(self.settings.groq_readiness_file).read_bytes(), previous)
+        self.assertEqual((self.root / ".env").read_bytes(), original_env)
+
+    def test_expired_account_confirmation_cannot_be_extended_by_renewal(self):
+        previous, _ = self.expired_record()
+        self.evidence["account_confirmed_at"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+        self.path.write_text(json.dumps(self.evidence), encoding="utf-8")
+        with self.assertRaises(demo.SetupError): demo.configure(renew=True)
+        self.assertEqual(Path(self.settings.groq_readiness_file).read_bytes(), previous)
+        self.model.assert_not_called(); self.estimator.assert_not_called()
+
+    def test_renewal_refuses_a_changed_account_identity(self):
+        previous, _ = self.expired_record()
+        self.evidence["account_reference"] = "different-account"
+        self.path.write_text(json.dumps(self.evidence), encoding="utf-8")
+        with self.assertRaises(demo.SetupError): demo.configure(renew=True)
+        self.assertEqual(Path(self.settings.groq_readiness_file).read_bytes(), previous)
         self.model.assert_not_called()
 
 

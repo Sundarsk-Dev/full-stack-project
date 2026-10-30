@@ -63,6 +63,25 @@ class AILedgerFixture(WorkerFixture):
         self.assertEqual(str(error.exception), code)
 
 
+class LargerBatchLedgerTests(AILedgerFixture):
+    policy_text = "Renewal information " * 95 + "."
+
+    def test_retry_cannot_exceed_total_even_after_restart(self):
+        self.assertGreater(self.batches[0].input_reservation, 5000)
+        first = self.reserve()
+        self.send(first, outcome="rate_limited", usage=None)
+        self.restart()
+        self.assert_blocked("analysis_budget_exhausted", lambda: self.reserve(retry_of=first))
+        with self.factory() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(AICall)), 1)
+
+    def test_account_limit_still_overrides_request_allowance(self):
+        policy = replace(self.policy, limits=self.policy.limits[:2] + (
+            QuotaLimit("model_tokens_minute", "total_tokens", 60, 6000),))
+        self.assert_blocked("quota_exhausted", lambda: self.reserve(policy=policy))
+        self.assertFalse(self.sent)
+
+
 class AILedgerTests(AILedgerFixture):
 
     def test_unknown_expired_or_incomplete_quotas_make_no_reservation(self):

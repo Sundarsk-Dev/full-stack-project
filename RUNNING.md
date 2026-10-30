@@ -1,6 +1,6 @@
 # Run TermsLens on Windows
 
-The user confirms registration and a working request/output. Both MySQL migrations passed at `20261029_lifecycle`. Output readability is a known UI issue; detailed provider/recovery acceptance remains pending. [README](README.md#start-here-existing-windows-workspace) starts the AI demo; the basic run below uses Rules-only.
+Registration and requests work. Both migrations passed at `20261029_lifecycle`; the redesigned overview/default Hybrid passed desktop/mobile Playwright checks. For this frontend update, refresh the browser after the build; no migration or provider retest is needed. [README](README.md#start-here-existing-windows-workspace) starts the AI demo; the basic run below uses Rules-only.
 
 Run commands from the project root. This workspace already has `.venv`, frontend dependencies, a built frontend and private `.env`; proceed directly to step 3. Retain the passing checks/setup below for reproduction; do not recreate database accounts or overwrite `.env`.
 
@@ -76,9 +76,25 @@ Keep both terminals running; run exactly one worker. It prints `Worker started. 
 4. Confirm deletion of the example and wait for its deletion receipt. Leave the worker running for cleanup.
 5. Log out. Use Ctrl+C in the API and worker terminals to stop them.
 
-Registration and request/output are user-reported working. Follow [README output guidance](README.md#submit-and-read-the-output) for scores, filters and evidence. Reopening, precise provider provenance, recovery, evaluation and benchmarks remain in the [checklist](verification-checklist.md); unreadable output is an open UI issue.
+Follow [README output guidance](README.md#submit-and-read-the-output) for the new overview, finding groups and evidence dialog. Reopening/navigation passed mocked browser checks; real restart/isolation/provider acceptance and evaluation remain in the [checklist](verification-checklist.md).
+
+## UI checks with Playwright
+
+For a UI-only change on this host, reuse installed Playwright; these checks make no Groq calls:
+
+```powershell
+$env:TERMSLENS_PLAYWRIGHT_MODULE = 'C:\Users\KUZHALAMANI\AppData\Local\Programs\Python\Python311\Lib\site-packages\playwright\driver\package'
+$env:TERMSLENS_PYTHON = "$PWD\.venv\Scripts\python.exe"
+npm.cmd --prefix apps/web run build
+npm.cmd --prefix apps/web test
+node apps/web/tests/browser.smoke.cjs
+```
+
+For saved-report visual replay, `report.visual.cjs` reads a local JSON report specified by `TERMSLENS_REPORT_FIXTURE`, defaulting to private `var/ui-review/latest-report.json`. Screenshots go under `var/ui-review/`; API responses are intercepted and no requests are submitted. The current review preserves before/after and synthetic mixed-result captures there.
 
 ## Fresh clone only
+
+Skip installation in this configured workspace.
 
 Use Python 3.11, Node 22.12+ and MySQL 8. The application accepts only `mysql+pymysql` URLs targeting `termslens_db`; test commands accept only `termslens_test`. SQLite appears solely in supplementary tests.
 

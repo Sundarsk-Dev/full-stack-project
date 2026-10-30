@@ -13,7 +13,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from .ai_contract import PROMPT_REVISION, ReviewBatch, prepare_review, snapshot
+from .ai_contract import INPUT_TOTAL, PROMPT_REVISION, ReviewBatch, prepare_review, snapshot
 from .db import utcnow
 from .models import AIBudgetWindow, AICall, Document, DocumentVersion, Job, new_id
 
@@ -148,7 +148,7 @@ def reserve(factory, job_id, token, analysis, batch, *, policy, retry_of=None):
             raise LedgerBlocked("context_changed")
         if any(c.state in {"reserved", "sending", "unknown"} or c.error_code == "usage_exceeded" for c in calls):
             raise LedgerBlocked("previous_attempt_unresolved")
-        if (len(calls) >= 2 or sum(c.input_reserved for c in calls) + batch.input_reservation > 10000
+        if (len(calls) >= 2 or sum(c.input_reserved for c in calls) + batch.input_reservation > INPUT_TOTAL
                 or sum(c.output_reserved for c in calls) + batch.output_reservation > 2000):
             raise LedgerBlocked("analysis_budget_exhausted")
         prior = next((c for c in calls if c.id == retry_of), None)

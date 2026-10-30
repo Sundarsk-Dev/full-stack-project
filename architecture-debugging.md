@@ -47,7 +47,7 @@ Paste/URL/reanalysis jobs support rules-only or consented hybrid. Publication ve
 
 ## Dependency boundaries
 
-Local tests do not prove browser, fresh install or MySQL acceptance. MySQL needs both authenticated utf8mb4 schemas at the current migration. Groq needs verified free access/accounting and durable quotas; fake transport tests cannot prove live operation.
+Local tests do not prove full MySQL/provider acceptance. Both utf8mb4 schemas are migrated; Groq needs verified accounting and durable quotas. Fake transport does not prove live operation.
 
 Pins: [requirements.txt](apps/api/requirements.txt) / [requirements-dev.txt](apps/api/requirements-dev.txt), [package-lock.json](apps/web/package-lock.json). Use `.venv`.
 
@@ -89,8 +89,9 @@ F5 events add `ai_dispatch_started` / `ai_dispatch_finished` with job/call UUIDs
 | Wrong/absent highlighting | Saved capture versus code-point offsets | `evidence_mismatch`, Unicode tests, and exact quote reproduction. Never edit saved text to fit a quote. |
 | Unexpected grade / unknown category | Stored engine, applicable scope, clauses, caps | Run analysis tests; unknown evidence may correctly withhold a grade. Compare saved revisions before changing rules. |
 | No AI findings | Requested/effective mode, review status/reason and health availability | Check readiness/consent and saved attempts. Disabled, expired or unverified settings cause fallback; accepted findings may also be zero after validation. |
+| Hybrid unavailable again | Health `external_review.reason`, shown in both forms | For expired readiness, see [renewal](DEMO.md#when-ai-becomes-unavailable); preserve account evidence/usage, then refresh. |
 
-`/api/health` checks API/database access and the jobs table; it does not certify migrations, worker activity or gate acceptance. A successful build does not explain a socket failure. The known Windows socketpair/10013 and browser-launch failures are recorded in the handoff; investigate those only when environment conditions change.
+`/api/health` checks API/database access and the jobs table, not migrations, worker activity or gate acceptance. Revisit blocked environment checks only when conditions change.
 
 ## Schema changes and recovery
 
@@ -115,13 +116,13 @@ Comparison 409 requires common settings/consent and reanalysis; delete 409 means
 
 ## F5 configuration, dispatch and recovery
 
-[README readiness instructions](README.md#groq-readiness-and-authorization) define environment variables, attestations and quotas. `Settings.from_env(test=True)` selects only the test URL and clears key/model/enabled/readiness fields. Worker/manage CLI and MySQL acceptance use it; a missing test URL never falls back to the application database. Explicit fake transports remain available to local tests.
+[README](README.md#groq-readiness-and-authorization) defines readiness/quotas. Worker/manage/MySQL tests use `Settings.from_env(test=True)`: test URL only, cleared provider settings, no production fallback. Local tests support fake transports.
 
 `groq_readiness()` returns fixed reasons without calls; `configured` means local validation. Health/hybrid claims reread readiness. Restart API/worker for environment changes. Rules-only reads no readiness file or transport. See README.
 
 The F5 ledger reserves/persists before `begin_dispatch()` commits `sending` once. `finish()` saves response/usage before validation. `recover()` fences interruptions and verifies capture/context/model/account/prompt identity; `saved_response()` reads compatible results. `app.manage --job` exposes safe attempt IDs/states.
 
-Quota rows lock in stable order. Unknown/expired policy permits zero reservations. Charges persist through the last dispatch deadline plus each window's duration; only verified usage in the same generation earns refunds. Names cannot reset limits. Retries share two requests/one retry/12 clauses and token ceilings. Verify real locking with `scripts/check.py --mysql` after setup.
+Quota rows lock in stable order. Unknown/expired policy permits zero reservations. Charges last through dispatch deadline + window; verified same-generation usage permits refunds. Requests reserve <=6,000 input each and share 10,000 input/2,000 output, two requests/one retry/12 clauses. Larger first batches leave less retry capacity. Names cannot reset limits. Real locking: `scripts/check.py --mysql`.
 
 The coordinator derives text/type/mode/consent from the leased job/capture and reuses saved responses before new work. F6 persists `ReviewOutcome` metadata and a compact rules baseline. Publication revalidates owned response evidence, scores and baseline preservation; each AI finding links to its call. Result rows, terminal job state and result link commit together. Degraded/limited outcomes use `partial`.
 
@@ -139,6 +140,6 @@ HTTP 408/5xx/network/truncation outcomes are unknown; invalid/non-200 responses 
 
 Consent is a strict boolean for Groq, timestamped by the API and included in hybrid idempotency identity. Rules-only hashes retain the old field set. The UI clears consent on source/type/mode changes and reads availability from health. Report baseline switching is local; AI filters and source/model labels use saved provenance. Legacy null metadata is shown as unavailable, never recomputed with newer rules.
 
-[Source preparation](eval/README.md): rights/labels pending. User confirms registration and request/output work; output UI is hard to read. README explains output controls. Detailed provider/reopen/recovery acceptance remains pending. Agent socket restrictions are separate.
+[Consumer demo](DEMO.md#consumer-walkthrough): 14/20 clauses rated locally; six fit AI preparation. General-policy blocker: analysis.py guards the whole document; ai_contract.py collects every exception paragraph. The reported 97-clause policy still selects zero. User narrowed scope to demo/allowance; context redesign and [human labels](eval/README.md) remain pending.
 
 Keep private content, credentials, URLs and raw exceptions out of logs/handoffs. Use fixed codes and synthetic fixtures. Follow AGENTS; verify frozen inputs and document caps with `python scripts/check_context.py`.
